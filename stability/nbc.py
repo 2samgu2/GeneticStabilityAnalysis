@@ -1,3 +1,23 @@
+"""nbc.py.
+
+Author -- Terek R Arce
+Version -- 1.0
+
+Copyright 2016 Terek Arce
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 import numpy as np
 from collections import Counter
 from sklearn.metrics import mean_squared_error
@@ -5,17 +25,17 @@ from scipy.sparse.linalg import lsqr
 from math import sqrt
 
 class Model:
-    
+
     def __init__(self, samples, eps, class_label):
-        
+
         self.class_label = class_label
         self.samples = np.array(samples)
         self.eps = eps
-        
+
         self.correlation = np.corrcoef( self.samples, y=None, rowvar=0, bias=0, ddof=None ) # columns are variables, rows are samples
-        
+
         self.mask = (np.absolute(self.correlation) > self.eps) # note that the mask is actually the graph
-        
+
         self.geneFuncMasks = [] #these are the coefficients in Ax=b
         for gene in range(len(self.correlation)):
             currMask = self.mask[gene]
@@ -28,16 +48,16 @@ class Model:
                 solutions.append(sample[gene])
             coeff = self.AxbSolver(setOfNeighbors, solutions, 2)
             self.geneFuncMasks.append(coeff.tolist())
-        
+
         self.coefficients = np.array(self.geneFuncMasks)
-    
+
     def AxbSolver(self, neighbors, sols, choice):
         # Use lsqr to solve Ax=b
         A=np.array(neighbors)
         b=np.array(sols)
         x = lsqr(A,b)[0]
         return x
-    
+
     def getExpression(self, sample):
         expression = []
         for gene in range(len(self.coefficients)):
@@ -47,24 +67,24 @@ class Model:
             geneVal += self.coefficients[gene][len(self.mask)]
             expression.append(geneVal)
         return np.array(expression)
-    
+
     def getClass (self):
         return self.class_label
 
 class NetworkBasedClassifier:
-    
+
     def __init__(self, epsilon):
-        
+
         self.models = []
         self.epsilon = epsilon
-    
+
     def fit ( self, X, y ):
         y = np.array(y)
         X = np.array(X)
         for key in Counter( y ):
             a_class = np.where( y == key )
             self.models.append( Model ( [ X[i] for i in a_class[0] ], self.epsilon, key  ) )
-    
+
     def predict ( self, X ):
         classifications = []
         for sample in X:

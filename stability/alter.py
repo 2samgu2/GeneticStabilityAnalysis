@@ -1,3 +1,24 @@
+"""alter.py.
+
+Author -- Terek R Arce
+Version -- 1.0
+
+Copyright 2016 Terek Arce
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
+
 import numpy as np
 from random import uniform
 
@@ -34,7 +55,7 @@ change == 1 --> chi2 selection
 change == 2 --> random selection
 
 exprs : the expressions to be altered
-indices : 
+indices :
     if 0 then greedily selected indices
     if 1 or 2 then number of indices to be changed
         NOTE that the selection FASTR files are pre-computed TODO: possibly calculate on the fly
@@ -45,7 +66,7 @@ change: what subset alteration will be performed
 def subset ( exprs, indices, series, change ):
     high = np.amax( exprs )
     low = np.amin( exprs )
-    
+
     # NOTE: indices in the file refers to the num of features being selected
     if ( change == 1 ):
         file = ( "FASTR/%s_%03d_%03d_nCk.npy" % ( series, len( exprs[0] ), indices) )
