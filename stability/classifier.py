@@ -1,3 +1,24 @@
+"""classifier.py.
+
+Author -- Terek R Arce
+Version -- 1.0
+
+Copyright 2016 Terek Arce
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
+
 import numpy as np
 import stability.alter as alter
 from stability.nbc import NetworkBasedClassifier
@@ -51,14 +72,14 @@ change == 2 --> random selection
 def predict ( a_classifier, indices, classes, exprs, fold, change, test, series ):
     e = np.array( [exprs[i] for i in indices[fold]] )
     c = np.array( [classes[i] for i in indices[fold]] )
-    
+
     if ( change == 0 or change == 1 or change == 2 ):
         e = alter.subset( e, test, series, change )
     elif( change == 3 ):
         e = alter.all( e, test )
-    
+
     c_pred = np.array( a_classifier.predict( e ) )
-            
+
     mask = c_pred == c
     return sum( mask )
 
