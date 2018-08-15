@@ -107,6 +107,6 @@ venv.bak/
 SPA/
 FAST/
 FASTR/
-gseRaw/
+GSE/
 .idea/
 .DS_Store
