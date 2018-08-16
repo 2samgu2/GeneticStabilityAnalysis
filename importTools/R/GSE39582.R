@@ -1,36 +1,29 @@
-# Run SIT first with GSE27562 to ensure the series is imported
+# Run SIT first with GSE39582 to ensure the series is imported
 
 notebook_dir <- getwd() # get the working directory
 main_dir <- dirname(dirname(notebook_dir)) # get two levels up
-gse_dir = file.path(main_dir,"GSE","GSE27562")
+gse_dir = file.path(main_dir,"GSE","GSE39582")
 
 setwd(gse_dir)
 
 paste("Reading in filtered RMA data")
 matrix <- read.table("filteredRMA.txt",header=TRUE,row.names=1)
 
+paste("Reading series data...")
+library(GEOquery)
+gse <- getGEO(GEO = 'GSE39582', destdir = dirname(gse_dir))
+
 paste("Cleaning up...")
-classes <- gsub("PBMC_", "", colnames(matrix))
+pheno <-phenoData(gse[[1]])
+colnames(matrix)<-pheno$characteristics_ch1.30
 
-toRemove <- rev(c(1:10))
-toRemove <- paste(c("_training_"), toRemove, sep = '', collapse = ' ')
-toRemove <- unlist(strsplit(toRemove, split=" "))
-for (i in 1:length(toRemove)) {
-    classes <- sub(toRemove[i][1], "", classes)
-}
-
-toRemove <- rev(c(1:47))
-toRemove <- paste(c("_validation_"), toRemove, sep='', collapse=' ')
-toRemove <- unlist(strsplit(toRemove, split=" "))
-for (i in 1:length(toRemove))
-{
-    classes <- sub(toRemove[i][1], "", classes)
-}
+classes <- gsub("cit.molecularsubtype: ", "", colnames(matrix))
+colnames(matrix) <- classes
 
 colnames(matrix) <- classes
 
 paste("Generating classes and data...")
-patterns <- c("normal", "benign", "malignant")
+patterns <- c("C1","C2","C3","C4","C5","C6")
 expressions = matrix[ , grepl( paste(patterns, collapse="|") , names( matrix ) ) ]
 
 classes = gsub("\\..*","",colnames(expressions))
