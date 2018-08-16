@@ -15,6 +15,8 @@ gc()
 # overwrite with: commandArgs <- function() c("GSE7079","rgu34a")
 args <- commandArgs(trailingOnly=TRUE)
 
+series = args[0]
+
 notebook_dir <- getwd() # get the working directory
 main_dir <- dirname(dirname(notebook_dir)) # get two levels up
 gse_dir = file.path(main_dir,"GSE")
