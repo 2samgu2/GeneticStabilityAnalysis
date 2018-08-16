@@ -15,8 +15,9 @@ gc()
 # overwrite with: commandArgs <- function() c("GSE7079","rgu34a")
 args <- commandArgs(trailingOnly=TRUE)
 
-series = args[0]
+series = args[1]
 
+paste("Setting paths...")
 notebook_dir <- getwd() # get the working directory
 main_dir <- dirname(dirname(notebook_dir)) # get two levels up
 gse_dir = file.path(main_dir,"GSE")
@@ -33,7 +34,7 @@ if(length(gse) > 1) {
 series.pheno <- phenoData(gse[[1]])
 
 if (!dir.exists(file.path(gse_dir, series))) {
-    paste("Downloading supplementary files...)
+    paste("Downloading supplementary files...")
     suppFiles = getGEOSuppFiles(GEO = series, makeDirectory = TRUE, baseDir = gse_dir)
     tarFiles = file.path(rownames(suppFiles)[1])
     untarPath = file.path(dirname(tarFiles),"data")
@@ -62,3 +63,5 @@ colnames(rma_mat) <- pData(series.pheno)$title
 setwd(gse_dir)
 result_path = file.path(gse_dir,series,"filteredRMA.txt")
 write.table(rma_mat,result_path,sep = "\t", row.names=TRUE)
+
+paste("GSE series successfully imported")
