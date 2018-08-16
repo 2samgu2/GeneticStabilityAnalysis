@@ -1,22 +1,29 @@
-# Run SIT first with GSE19804 to ensure the series is imported
+# Run SIT first with GSE39582 to ensure the series is imported
 
 notebook_dir <- getwd() # get the working directory
 main_dir <- dirname(dirname(notebook_dir)) # get two levels up
-gse_dir = file.path(main_dir,"GSE","GSE19804")
+gse_dir = file.path(main_dir,"GSE","GSE39582")
 
 setwd(gse_dir)
 
 paste("Reading in filtered RMA data")
 matrix <- read.table("filteredRMA.txt",header=TRUE,row.names=1)
 
+paste("Reading series data...")
+library(GEOquery)
+gse <- getGEO(GEO = 'GSE39582', destdir = dirname(gse_dir))
+
 paste("Cleaning up...")
-classes <- gsub("Lung.", "", colnames(matrix))
-classes = gsub("\\..*","",classes)
+pheno <-phenoData(gse[[1]])
+colnames(matrix)<-pheno$characteristics_ch1.30
+
+classes <- gsub("cit.molecularsubtype: ", "", colnames(matrix))
+colnames(matrix) <- classes
 
 colnames(matrix) <- classes
 
 paste("Generating classes and data...")
-patterns <- c("Cancer", "Normal")
+patterns <- c("C1","C2","C3","C4","C5","C6")
 expressions = matrix[ , grepl( paste(patterns, collapse="|") , names( matrix ) ) ]
 
 classes = gsub("\\..*","",colnames(expressions))
