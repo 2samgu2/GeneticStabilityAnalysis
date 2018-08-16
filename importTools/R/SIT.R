@@ -45,6 +45,7 @@ if (!dir.exists(file.path(gse_dir, series))) {
 }
 
 setwd(file.path(gse_dir,series,"data")) # TODO: convert series to upper case.
+paste("WARNING: If not enough memory, see SIT notebook for alternative import strategy.")
 celfiles.data = ReadAffy()
 
 paste("Downloading probe data...")
