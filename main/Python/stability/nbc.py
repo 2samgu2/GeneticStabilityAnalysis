@@ -1,32 +1,28 @@
-"""nbc.py.
+"""
+nbc.py.
 
 Author -- Terek R Arce
 Version -- 1.0
-
-Copyright 2016 Terek Arce
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
 """
 
-import numpy as np
 from collections import Counter
+from math import sqrt
+import numpy as np
 from sklearn.metrics import mean_squared_error
 from scipy.sparse.linalg import lsqr
-from math import sqrt
+
 
 class Model:
+    """Describes the model class."""
 
     def __init__(self, samples, eps, class_label):
+        """Initialize the model class.
+
+        Args:
+            samples: training samples of size [samples, genes].
+            eps: epsilon value for correlation cutoff.
+            class_label: classification label.
+        """
 
         self.class_label = class_label
         self.samples = np.array(samples)
@@ -34,9 +30,12 @@ class Model:
 
         self.correlation = np.corrcoef( self.samples, y=None, rowvar=0, bias=0, ddof=None ) # columns are variables, rows are samples
 
-        self.mask = (np.absolute(self.correlation) > self.eps) # note that the mask is actually the graph
+        self.mask = (np.absolute(self.correlation) > self.eps)  # note that the mask is actually the graph
 
-        self.geneFuncMasks = [] #these are the coefficients in Ax=b
+        # the coefficients associated with the system of equation: Ax=b,
+        # where A is an equation list created from the neighbors of gene
+        # n and b is the value of gene n.
+        self.geneFuncMasks = []  # these are the coefficients in Ax=b
         for gene in range(len(self.correlation)):
             currMask = self.mask[gene]
             setOfNeighbors = []
@@ -59,6 +58,14 @@ class Model:
         return x
 
     def getExpression(self, sample):
+        """Given a sample, return the hypothetical expression.
+
+        Args:
+            sample: the sample whose hypothetical expression we wish to
+            calculate
+        Returns:
+            expr: A list with the expression values of size number of genes.
+        """
         expression = []
         for gene in range(len(self.coefficients)):
             geneVal = 0
@@ -69,30 +76,56 @@ class Model:
         return np.array(expression)
 
     def getClass (self):
+        """Return the classification label of this model."""
         return self.class_label
 
+
 class NetworkBasedClassifier:
+    """Describes the NBClassifier class."""
 
     def __init__(self, epsilon):
+        """Initialize a NBF classifier.
 
+        Args:
+            eps: epsilon value
+        """
         self.models = []
         self.epsilon = epsilon
 
     def fit ( self, X, y ):
+        """Fit the data with classes to create class models.
+
+        Fits the data [num_samples, num_genes] with classifications
+        [num_samples] to the model.  Creates as many models as classes.
+
+        Args:
+            X: the data we wish to train the classifier on
+            y: the classifications associated with the samples
+        """
         y = np.array(y)
         X = np.array(X)
-        for key in Counter( y ):
-            a_class = np.where( y == key )
-            self.models.append( Model ( [ X[i] for i in a_class[0] ], self.epsilon, key  ) )
+        for key in Counter(y):
+            a_class = np.where(y == key)
+            self.models.append(Model([X[i] for i in a_class[0]], self.epsilon, key))
 
-    def predict ( self, X ):
+    def predict(self, X):
+        """Predict the classification of a sample.
+
+        Must fit the classifier before this method is called.
+
+        Args:
+            samples: the samples we wish to predict classification for.
+
+        Returns:
+            classifications: the classifications of the samples.
+        """
         classifications = []
         for sample in X:
             RMSEs = []
             for model in self.models:
-                rmse = sqrt( mean_squared_error( sample, model.getExpression( sample ) ) )
+                rmse = sqrt( mean_squared_error(sample, model.getExpression(sample)))
                 RMSEs.append(rmse)
-            min_index = RMSEs.index( min(RMSEs) )
+            min_index = RMSEs.index(min(RMSEs))
             label = self.models[min_index].getClass()
             classifications.append(label)
         return np.array(classifications)
