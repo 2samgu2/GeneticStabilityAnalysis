@@ -28,9 +28,11 @@ class Model:
         self.samples = np.array(samples)
         self.eps = eps
 
-        self.correlation = np.corrcoef( self.samples, y=None, rowvar=0, bias=0, ddof=None ) # columns are variables, rows are samples
+        # columns are variables, rows are samples
+        self.correlation = np.corrcoef(self.samples, y=None, rowvar=False)
 
-        self.mask = (np.absolute(self.correlation) > self.eps)  # note that the mask is actually the graph
+        # note that the mask is actually the graph
+        self.mask = (np.absolute(self.correlation) > self.eps)
 
         # the coefficients associated with the system of equation: Ax=b,
         # where A is an equation list created from the neighbors of gene
@@ -41,23 +43,24 @@ class Model:
             setOfNeighbors = []
             solutions = []
             for sample in self.samples:
-                neighbors = [sample[neighbor] if ((currMask[neighbor] == True) and (gene != neighbor)) else 0 for neighbor in range(len(currMask))]
+                neighbors = [sample[neighbor] if (currMask[neighbor] and (gene != neighbor))
+                             else 0 for neighbor in range(len(currMask))]
                 neighbors.append(1)
                 setOfNeighbors.append(neighbors)
                 solutions.append(sample[gene])
-            coeff = self.AxbSolver(setOfNeighbors, solutions, 2)
+            coeff = self.solver(setOfNeighbors, solutions, 2)
             self.geneFuncMasks.append(coeff.tolist())
 
         self.coefficients = np.array(self.geneFuncMasks)
 
-    def AxbSolver(self, neighbors, sols, choice):
+    def solver(self, neighbors, sols, choice):
         # Use lsqr to solve Ax=b
-        A=np.array(neighbors)
-        b=np.array(sols)
-        x = lsqr(A,b)[0]
+        A = np.array(neighbors)
+        b = np.array(sols)
+        x = lsqr(A, b)[0]
         return x
 
-    def getExpression(self, sample):
+    def expression(self, sample):
         """Given a sample, return the hypothetical expression.
 
         Args:
@@ -75,7 +78,7 @@ class Model:
             expression.append(geneVal)
         return np.array(expression)
 
-    def getClass (self):
+    def label (self):
         """Return the classification label of this model."""
         return self.class_label
 
@@ -92,7 +95,7 @@ class NetworkBasedClassifier:
         self.models = []
         self.epsilon = epsilon
 
-    def fit ( self, X, y ):
+    def fit(self, X, y):
         """Fit the data with classes to create class models.
 
         Fits the data [num_samples, num_genes] with classifications
@@ -123,9 +126,9 @@ class NetworkBasedClassifier:
         for sample in X:
             RMSEs = []
             for model in self.models:
-                rmse = sqrt( mean_squared_error(sample, model.getExpression(sample)))
+                rmse = sqrt( mean_squared_error(sample, model.expression(sample)))
                 RMSEs.append(rmse)
             min_index = RMSEs.index(min(RMSEs))
-            label = self.models[min_index].getClass()
+            label = self.models[min_index].label()
             classifications.append(label)
         return np.array(classifications)
