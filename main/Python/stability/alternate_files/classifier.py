@@ -25,7 +25,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn import svm
 
 
-class MyClassifier:
+class Estimator:
     """Describes the classifier chooser."""
 
     # Classifiers included in the chooser
