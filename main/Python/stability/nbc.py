@@ -1,134 +1,143 @@
-"""
-nbc.py.
+"""nbc.py.
+
+This file contains classes for the Network-based Classifier.
 
 Author -- Terek R Arce
-Version -- 1.0
+Version -- 2.0
 """
 
+import numpy as np
+from multiprocessing import Pool, cpu_count
 from collections import Counter
 from math import sqrt
-import numpy as np
 from sklearn.metrics import mean_squared_error
 from scipy.sparse.linalg import lsqr
 
 
 class Model:
-    """Describes the model class."""
+    """The model constructed for a given class"""
 
-    def __init__(self, samples, eps, class_label):
-        """Initialize the model class.
+    def __init__(self, X, label, epsilon=0.8):
+        """Initializes the model for a given class.
 
-        Args:
-            samples: training samples of size [samples, genes].
-            eps: epsilon value for correlation cutoff.
-            class_label: classification label.
+        :param X: Training data for model. If array or matrix, shape [n_samples, n_features].
+        :param label: Class label for the data.
+        :param epsilon: epsilon value correlation cutoff
         """
+        self._label = label
+        self.X = np.array(X)
 
-        self.class_label = class_label
-        self.samples = np.array(samples)
-        self.eps = eps
+        correlations = np.corrcoef(self.X, y=None, rowvar=False)
 
-        # columns are variables, rows are samples
-        self.correlation = np.corrcoef(self.samples, y=None, rowvar=False)
+        # Note: the mask is the graph.
+        self.mask = (np.absolute(correlations) > epsilon)
 
-        # note that the mask is actually the graph
-        self.mask = (np.absolute(self.correlation) > self.eps)
+        pool = Pool(processes=cpu_count())
+        self.coefficients = pool.map(self.solver, [gene for gene in range(len(correlations))])
+        pool.terminate()
 
-        # the coefficients associated with the system of equation: Ax=b,
-        # where A is an equation list created from the neighbors of gene
-        # n and b is the value of gene n.
-        self.geneFuncMasks = []  # these are the coefficients in Ax=b
-        for gene in range(len(self.correlation)):
-            currMask = self.mask[gene]
-            setOfNeighbors = []
-            solutions = []
-            for sample in self.samples:
-                neighbors = [sample[neighbor] if (currMask[neighbor] and (gene != neighbor))
-                             else 0 for neighbor in range(len(currMask))]
-                neighbors.append(1)
-                setOfNeighbors.append(neighbors)
-                solutions.append(sample[gene])
-            coeff = self.solver(setOfNeighbors, solutions, 2)
-            self.geneFuncMasks.append(coeff.tolist())
+        self.coefficients = np.array(self.coefficients)
 
-        self.coefficients = np.array(self.geneFuncMasks)
+    def solver(self, gene):
+        """Uses least-square solver to compute coefficients for Ax=b, where
+        A is an equation list created from the neighbors of a gene and b is
+        the value of the gene.
 
-    def solver(self, neighbors, sols, choice):
-        # Use lsqr to solve Ax=b
-        A = np.array(neighbors)
-        b = np.array(sols)
+        :param gene: The index of the gene to be solved for.
+        :return: The coefficients of the equation (x) in Ax=b
+        """
+        mask = self.mask[gene]
+        A = []
+        b = []
+        for sample in self.X:
+            neighbors = [sample[neighbor] if (mask[neighbor] and (gene != neighbor))
+                         else 0 for neighbor in range(len(mask))]
+            neighbors.append(1)
+            A.append(neighbors)
+            b.append(sample[gene])
+        A = np.array(A)
+        b = np.array(b)
         x = lsqr(A, b)[0]
-        return x
+        return x.tolist()
 
     def expression(self, sample):
-        """Given a sample, return the hypothetical expression.
+        """Returns a hypothetical expression level for a given sample.
 
-        Args:
-            sample: the sample whose hypothetical expression we wish to
-            calculate
-        Returns:
-            expr: A list with the expression values of size number of genes.
+        :param sample: Test sample
+        :return: The hypothetical expression level of a given sample.
         """
         expression = []
         for gene in range(len(self.coefficients)):
-            geneVal = 0
-            for neighbor in range(len(self.mask)-1):
-                geneVal += self.coefficients[gene][neighbor] * sample[neighbor]
-            geneVal += self.coefficients[gene][len(self.mask)]
-            expression.append(geneVal)
+            level = 0  # the expression level of a gene
+            for neighbor in range(len(self.mask) - 1):
+                level += self.coefficients[gene][neighbor] * sample[neighbor]
+            level += self.coefficients[gene][len(self.mask)]
+            expression.append(level)
         return np.array(expression)
 
-    def label (self):
-        """Return the classification label of this model."""
-        return self.class_label
+    def label(self):
+        """Returns the class label of the model.
+
+        :return: The class label of the model.
+        """
+        return self._label
 
 
 class NetworkBasedClassifier:
-    """Describes the NBClassifier class."""
+    """Classifier implementing the Network-based Classifier."""
 
-    def __init__(self, epsilon):
-        """Initialize a NBF classifier.
+    def __init__(self, epsilon=0.8):
+        """Initializes the classifier.
 
-        Args:
-            eps: epsilon value
+        :param epsilon: epsilon value correlation cutoff.
         """
         self.models = []
         self.epsilon = epsilon
 
     def fit(self, X, y):
-        """Fit the data with classes to create class models.
+        """Fit the model using X as training data and y as target values.
 
-        Fits the data [num_samples, num_genes] with classifications
-        [num_samples] to the model.  Creates as many models as classes.
-
-        Args:
-            X: the data we wish to train the classifier on
-            y: the classifications associated with the samples
+        :param X: Training data. If array or matrix, shape [n_samples, n_features].
+        :param y: Target values of shape = [n_samples]
         """
         y = np.array(y)
         X = np.array(X)
-        for key in Counter(y):
-            a_class = np.where(y == key)
-            self.models.append(Model([X[i] for i in a_class[0]], self.epsilon, key))
+        for label in Counter(y):
+            a_class = np.where(y == label)
+            self.models.append(Model([X[i] for i in a_class[0]], label, self.epsilon))
 
     def predict(self, X):
-        """Predict the classification of a sample.
+        """Predict the class labels for the provided data.
 
-        Must fit the classifier before this method is called.
-
-        Args:
-            samples: the samples we wish to predict classification for.
-
-        Returns:
-            classifications: the classifications of the samples.
+        :param X: Test samples.
+        :return: lass labels for each data sample.
         """
-        classifications = []
-        for sample in X:
-            RMSEs = []
-            for model in self.models:
-                rmse = sqrt( mean_squared_error(sample, model.expression(sample)))
-                RMSEs.append(rmse)
-            min_index = RMSEs.index(min(RMSEs))
-            label = self.models[min_index].label()
-            classifications.append(label)
+        pool = Pool(processes=cpu_count())
+        classifications = pool.map(self.classification, [sample for sample in X])
+        pool.terminate()
         return np.array(classifications)
+
+    def score(self, X, y):
+        """Returns the mean accuracy on the given test data and labels.
+
+        :param X: Test samples.
+        :param y: True labels for X.
+        :return: Mean accuracy of self.predict(X) wrt. y.
+        """
+        y = np.array(y)
+        X = np.array(X)
+        correct = np.asarray(self.predict(X) == y)
+        return np.sum(correct) / correct.shape[0]
+
+    def classification(self, sample):
+        """Returns the classification of the sample.
+
+        :param sample: Test sample
+        :return: The class label of the sample.
+        """
+        errors = []
+        for model in self.models:
+            error = sqrt(mean_squared_error(sample, model.expression(sample)))
+            errors.append(error)
+        min_index = errors.index(min(errors))
+        return self.models[min_index].label()
