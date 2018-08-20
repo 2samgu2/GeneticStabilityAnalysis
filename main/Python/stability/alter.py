@@ -10,6 +10,7 @@ import os as os
 from math import floor
 from random import sample, choice
 from multiprocessing import Pool, cpu_count
+from sklearn.model_selection import StratifiedKFold
 from stability.estimator import Estimator
 
 
@@ -26,10 +27,12 @@ class AlterStrategy:
     def __init__(self,
                  _type,
                  estimator: Estimator = None,
-                 path=None,
-                 X=None,
-                 y=None):
+                 X=None, y=None,
+                 path=None):
         self._type = _type
+        self.estimator = estimator
+        self.X = X
+        self.y = y
         if self.type == AlterStrategy.ALL:
             self._name = "ALL"
         elif self.type == AlterStrategy.SUB:
@@ -38,7 +41,7 @@ class AlterStrategy:
             self._name = "RANDSUB"
         elif self.type == AlterStrategy.GREEDY:
             self._name = "GREEDY"
-            filename = '{}greedyRank.npy'.format(estimator.getName())
+            filename = '{}greedyRank.npy'.format(estimator.name)
             self.greedy_path = os.path.join(path, filename)
             if not os.path.exists(self.greedy_path):
                 print("GREEDY RANK INITIALIZER - THIS CAN TAKE A WHILE.")
@@ -65,10 +68,26 @@ class AlterStrategy:
     def name(self):
         return self._name
 
+    def accuracy(self,
+                 X, y,
+                 chosen, idx_to_change,
+                 estimator: Estimator=None):
+        # TODO: run multiple times and return avg accuracy
+        result = []
+        for x in X:
+            alt = np.copy(x)
+            # alter prev chosen
+            for i in chosen:
+                alt[i] = 0
+            # alter new gene
+            alt[idx_to_change] = 0
+            result.append(alt)
+        result = np.array(result)
+        return estimator.score(result, y)
+
     def alter(self, percent, X):
         """B/c genese are already ordered by chi2 rank we can choose top k to alter.
 
-        :type rand: bool to select indices randomly or not.  If not, will use chi2 rank.
         :param percent: The percent of the subset to select from X
         :param X: Test samples.
         :return:
@@ -102,19 +121,12 @@ class AlterStrategy:
                 result.append(alt)
             return np.array(result)
 
-    def accuracy(self,
-                 X, y,
-                 chosen, idx_to_change,
-                 estimator: Estimator=None):
-        # TODO: run multiple times and return avg accuracy
-        result = []
-        for x in X:
-            alt = np.copy(x)
-            # alter prev chosen
-            for i in chosen:
-                alt[i] = 0
-            # alter new gene
-            alt[idx_to_change] = 0
-            result.append(alt)
-        result = np.array(result)
-        return estimator.score(result, y)
+    def cross_validate(self, percent=0, cv=10):
+        scores = []
+        skf = StratifiedKFold(cv)
+        for train_index, test_index in skf.split(self.X, self.y):
+            self.estimator.fit(self.X[train_index], self.y[train_index])
+            accuracy = self.estimator.score(
+                self.alter(percent, self.X[test_index]), self.y[test_index])
+            scores.append(accuracy)
+        return np.array(scores)

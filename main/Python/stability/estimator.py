@@ -29,24 +29,24 @@ class Estimator:
 
         :param _type: The type of classifier to initialize.
         :param epsilon: Used in NBC (See nbc.py for more details).
-        :param K: Used in KNeighborsClassifier (See documentation for more details).
+        :param k: Used in KNeighborsClassifier (See documentation for more details).
         """
         self._type = _type
 
         # create the classifier
-        if _type == Estimator.NBC:
+        if self.type == Estimator.NBC:
             self._classifier = NetworkBasedClassifier(epsilon)
             self._name = "NBC"
-        elif _type == Estimator.KNN:
+        elif self.type == Estimator.KNN:
             self._classifier = KNeighborsClassifier(k)
             self._name = "KNN"
-        elif _type == Estimator.SVM:
+        elif self.type == Estimator.SVM:
             self._classifier = svm.LinearSVC()
             self._name = "SVM"
-        elif _type == Estimator.RF:
+        elif self.type == Estimator.RF:
             self._classifier = RandomForestClassifier()
             self._name = "RF"
-        elif _type == Estimator.NB:
+        elif self.type == Estimator.NB:
             self._classifier = GaussianNB()
             self._name = "NB"
     
