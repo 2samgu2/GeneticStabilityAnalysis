@@ -24,7 +24,7 @@ class Estimator:
     RF = 3
     NB = 4
     
-    def __init__(self, _type, epsilon=0.8, K=1):
+    def __init__(self, _type, epsilon=0.8, k=1):
         """Initializes the classifier type.
 
         :param _type: The type of classifier to initialize.
@@ -38,7 +38,7 @@ class Estimator:
             self._classifier = NetworkBasedClassifier(epsilon)
             self._name = "NBC"
         elif _type == Estimator.KNN:
-            self._classifier = KNeighborsClassifier(K)
+            self._classifier = KNeighborsClassifier(k)
             self._name = "KNN"
         elif _type == Estimator.SVM:
             self._classifier = svm.LinearSVC()
@@ -50,14 +50,16 @@ class Estimator:
             self._classifier = GaussianNB()
             self._name = "NB"
     
-    def getType(self):
+    @property
+    def type(self):
         """Returns the type of the classifier.
 
         :return: The type of the classifier
         """
         return self._type
     
-    def getName(self):
+    @property
+    def name(self):
         """Returns the name of the classifier.
 
         :return: The string name of the classifier.
