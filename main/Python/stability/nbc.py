@@ -110,7 +110,6 @@ class NetworkBasedClassifier:
         """Predict the class labels for the provided data.
 
         :param X: Test samples.
-
         :return: lass labels for each data sample.
         """
         pool = Pool(processes=cpu_count())
@@ -123,7 +122,6 @@ class NetworkBasedClassifier:
 
         :param X: Test samples.
         :param y: True labels for X.
-
         :return: Mean accuracy of self.predict(X) wrt. y.
         """
         y = np.array(y)

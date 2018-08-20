@@ -1,91 +1,90 @@
-"""classifier.py.
+"""estimator.py.
+
+This file contains a wrapper class for classifiers used.
+
 
 Author -- Terek R Arce
-Version -- 1.0
-
-Copyright 2016 Terek Arce
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Version -- 2.0
 """
 
-
-import numpy as np
-import stability.alter as alter
 from stability.nbc import NetworkBasedClassifier
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB
-from sklearn import svm
 
-"""
-type == 0 --> NBC
-type == 1 --> kNN
-type == 2 --> SVM
-type == 3 --> RF
-type == 4 --> NB
-"""
 
-def getType ( str ):
-    types = [ "nbc", "knn", "svm", "rf", "nb" ]
-    return types.index( str.lower() )
+class Estimator:
+    """Describes the classifier chooser."""
 
-def init ( type ):
-    if (type == 0):
-        neigh = NetworkBasedClassifier( 0.8 )
-    elif (type == 1):
-        neigh = KNeighborsClassifier( n_neighbors = 1 )
-    elif ( type == 2 ):
-        neigh = svm.LinearSVC()
-    elif ( type == 3 ):
-        neigh = RandomForestClassifier()
-    elif ( type == 4 ):
-        neigh = GaussianNB()
-    else :
-        neigh = KNeighborsClassifier( n_neighbors = 1 )
-    return neigh
+    # Classifiers included:
+    NBC = 0
+    KNN = 1
+    SVM = 2
+    RF = 3
+    NB = 4
+    
+    def __init__(self, _type, epsilon=0.8, K=1):
+        """Initializes the classifier type.
 
-def train ( jump, indices, classes, exprs, fold ):
-    e = np.array( [ exprs[i] for i in indices[fold] ] )
-    c = np.array( [ classes[i] for i in indices[fold] ] )
-    jump.fit( e, c )
-    return (fold, jump)
+        :param _type: The type of classifier to initialize.
+        :param epsilon: Used in NBC (See nbc.py for more details).
+        :param K: Used in KNeighborsClassifier (See documentation for more details).
+        """
+        self._type = _type
 
-def create ( type, indices, classes, exprs, fold ):
-    c = init ( type )
-    return train ( c, indices, classes, exprs, fold )
+        # create the classifier
+        if _type == Estimator.NBC:
+            self._classifier = NetworkBasedClassifier(epsilon)
+            self._name = "NBC"
+        elif _type == Estimator.KNN:
+            self._classifier = KNeighborsClassifier(K)
+            self._name = "KNN"
+        elif _type == Estimator.SVM:
+            self._classifier = svm.LinearSVC()
+            self._name = "SVM"
+        elif _type == Estimator.RF:
+            self._classifier = RandomForestClassifier()
+            self._name = "RF"
+        elif _type == Estimator.NB:
+            self._classifier = GaussianNB()
+            self._name = "NB"
+    
+    def getType(self):
+        """Returns the type of the classifier.
 
-"""
-change == 0 --> greedy selection
-change == 1 --> chi2 selection
-change == 2 --> random selection
-"""
-def predict ( a_classifier, indices, classes, exprs, fold, change, test, series ):
-    e = np.array( [exprs[i] for i in indices[fold]] )
-    c = np.array( [classes[i] for i in indices[fold]] )
+        :return: The type of the classifier
+        """
+        return self._type
+    
+    def getName(self):
+        """Returns the name of the classifier.
 
-    if ( change == 0 or change == 1 or change == 2 ):
-        e = alter.subset( e, test, series, change )
-    elif( change == 3 ):
-        e = alter.all( e, test )
+        :return: The string name of the classifier.
+        """
+        return self._name
+    
+    def fit(self, X, y):
+        """Fit the model using X as training data and y as target values.
 
-    c_pred = np.array( a_classifier.predict( e ) )
+        :param X: Training data. If array or matrix, shape [n_samples, n_features].
+        :param y: Target values of shape = [n_samples]
+        """
+        self._classifier.fit(X, y)
+        
+    def score(self, X, y):
+        """Returns the mean accuracy on the given test data and labels.
 
-    mask = c_pred == c
-    return sum( mask )
+        :param X: Test samples
+        :param y: True labels for X
+        :return: Mean accuracy of self.predict(X) wrt. y.
+        """
+        return self._classifier.score(X, y)
+        
+    def predict(self, X):
+        """Predict the class labels for the provided data.
 
-def accuracy ( a_classifiers, indices, classes, exprs, change, test, series, folds = 10 ):
-    total = 0
-    for fold in range( folds ):
-        total += predict ( a_classifiers[fold], indices, classes, exprs, fold, change, test, series )
-    accuracy = total / len( classes )
-    return accuracy
+        :param X: Test samples.
+        :return: lass labels for each data sample.
+        """
+        return self._classifier.predict(X)
