@@ -22,7 +22,7 @@ class Model:
 
         :param X: Training data for model. If array or matrix, shape [n_samples, n_features].
         :param label: Class label for the data.
-        :param epsilon: epsilon value correlation cutoff
+        :param epsilon: Correlation cutoff value.
         """
         self._label = label
         self.X = np.array(X)
@@ -31,27 +31,33 @@ class Model:
 
         # Note: the mask is the graph.
         self.mask = (np.absolute(correlations) > epsilon)
+        print(np.sum(self.mask[0]))
 
         pool = Pool(processes=cpu_count())
-        self.coefficients = pool.map(self.solver, [gene for gene in range(len(correlations))])
+        self.coefficients = pool.starmap(self.solver,
+                                         [(gene, self.mask[gene], self.X) for gene in range(len(correlations))])
         pool.terminate()
 
         self.coefficients = np.array(self.coefficients)
+        print("NBC Model constructed.")
 
-    def solver(self, gene):
+    @staticmethod
+    def solver(gene, mask, X):
         """Uses least-square solver to compute coefficients for Ax=b, where
         A is an equation list created from the neighbors of a gene and b is
         the value of the gene.
 
         :param gene: The index of the gene to be solved for.
+        :param mask: The correlation mask for the gene.
+        :param X: The training samples.
         :return: The coefficients of the equation (x) in Ax=b
         """
-        mask = self.mask[gene]
         A = []
         b = []
-        for sample in self.X:
+        for sample in X:
             neighbors = [sample[neighbor] if (mask[neighbor] and (gene != neighbor))
-                         else 0 for neighbor in range(len(mask))]
+                         else 0
+                         for neighbor in range(len(mask))]
             neighbors.append(1)
             A.append(neighbors)
             b.append(sample[gene])
@@ -100,6 +106,7 @@ class NetworkBasedClassifier:
         :param X: Training data. If array or matrix, shape [n_samples, n_features].
         :param y: Target values of shape = [n_samples]
         """
+        self.models = []
         y = np.array(y)
         X = np.array(X)
         for label in Counter(y):
@@ -110,12 +117,12 @@ class NetworkBasedClassifier:
         """Predict the class labels for the provided data.
 
         :param X: Test samples.
-        :return: lass labels for each data sample.
+        :return: Class labels for each data sample.
         """
         pool = Pool(processes=cpu_count())
         classifications = pool.map(self.classification, [sample for sample in X])
         pool.terminate()
-        return np.array(classifications)
+        return classifications
 
     def score(self, X, y):
         """Returns the mean accuracy on the given test data and labels.
