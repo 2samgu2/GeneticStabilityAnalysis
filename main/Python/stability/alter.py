@@ -3,15 +3,15 @@
 Author -- Terek R Arce
 Version -- 2.0
 """
-from typing import Optional
 
 import numpy as np
 import os as os
 from math import floor
-from random import sample, choice
+from random import sample, choice, uniform
 from multiprocessing import Pool, cpu_count
 from sklearn.model_selection import StratifiedKFold
 from stability.estimator import Estimator
+from typing import Optional
 
 
 class AlterStrategy:
@@ -46,14 +46,13 @@ class AlterStrategy:
             if not os.path.exists(self.greedy_path):
                 print("GREEDY RANK INITIALIZER - THIS CAN TAKE A WHILE.")
                 self.estimator.fit(X, y)
-                print(X.shape[1])
                 to_choose = list(range(X.shape[1]))
                 chosen = []
                 for i in range(X.shape[1]):
                     pool = Pool(processes=cpu_count())
                     accuracies = pool.starmap(
                         self.accuracy,
-                        [(X, y, chosen, idx, estimator) for idx in to_choose])
+                        [(X, y, chosen, idx, self.estimator) for idx in to_choose])
                     pool.terminate()
                     a = [x for _, x in sorted(zip(accuracies, to_choose))]
                     chosen.append(a[0])
@@ -92,8 +91,8 @@ class AlterStrategy:
         :param X: Test samples.
         :return:
         """
-        # high = np.amax(X)
-        # low = np.amin(X)
+        high = np.amax(self.X)
+        low = np.amin(self.X)
         result = []
         k = floor(X[0].size * percent)
         if k <= 0:
@@ -117,7 +116,8 @@ class AlterStrategy:
                         high = alt[i] + offset
                         alt[i] = choice([low, high])
                     else:
-                        alt[i] = choice([0, alt[i] * 2])
+                        # alt[i] = choice([0, alt[i] * 2])
+                        alt[i] = uniform(low, high)
                 result.append(alt)
             return np.array(result)
 
@@ -130,3 +130,15 @@ class AlterStrategy:
                 self.alter(percent, self.X[test_index]), self.y[test_index])
             scores.append(accuracy)
         return np.array(scores)
+
+    def get_accuracies(self, step=0.05):
+        percents = np.arange(0, 1.01, step)
+        accuracies = []
+        deviations = []
+        for percent in percents:
+            scores = self.cross_validate(percent)
+            accuracies.append(scores.mean())
+            deviations.append(scores.std())
+        accuracies = np.array(accuracies)
+        deviations = np.array(deviations)
+        return np.column_stack((percents, accuracies, deviations))
