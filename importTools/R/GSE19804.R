@@ -25,6 +25,6 @@ classes = t(classes)
 write.table(classes,file.path(gse_dir,"classes.txt"),sep = "\t", quote = FALSE, row.names=FALSE, col.names=FALSE)
 
 expressions = t(expressions)
-write.table(expressions,file.path(gse_dir,"exprs.txt"),sep = "\t", row.names=FALSE, col.names=FALSE)
+write.table(expressions,file.path(gse_dir,"expressions.txt"),sep = "\t", row.names=FALSE, col.names=FALSE)
 
 paste("Expressions and classes generated successfully.")
