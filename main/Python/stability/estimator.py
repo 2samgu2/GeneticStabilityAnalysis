@@ -2,7 +2,6 @@
 
 This file contains a wrapper class for classifiers used.
 
-
 Author -- Terek R Arce
 Version -- 2.0
 """

@@ -1,5 +1,7 @@
 """alter.py.
 
+This file contains a class for various alteration strategies used.
+
 Author -- Terek R Arce
 Version -- 2.0
 """
@@ -8,8 +10,23 @@ import numpy as np
 import os as os
 from math import floor
 from random import sample, choice, uniform
+from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.model_selection import StratifiedKFold
 from stability.estimator import Estimator
+
+
+def select_k_best(k, X, y):
+    """Selects the top k features, returning their indices in chi2 rank order.
+
+    :param k: Number of top features to select.
+    :param X: The training input samples.
+    :param y: The target values (class labels in classification)
+    :return: Ranked indices by score.
+    """
+    b = SelectKBest(chi2, k).fit(X, y)
+    a = b.get_support(indices=True)
+    a = [x for _, x in sorted(zip(b.scores_[a], a), reverse=True)]
+    return np.array(a)
 
 
 class AlterStrategy:

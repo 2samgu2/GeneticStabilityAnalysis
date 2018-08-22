@@ -1,70 +1,75 @@
-"""
-SPA.py.
-Author -- Terek R Arce
-Version -- 1.0
+"""GSA.py.
 
-Copyright © 2016 Terek Arce
+This file contains the main program to run the genetic stability analysis.
+
+Author -- Terek R Arce
+Version -- 2.0
 """
 
 import sys
 import getopt
 import numpy as np
-from stability.testing import greedy, chi2rand
-from stability.write import writeFile
-from stability.classifier import getType
-from stability.alter import getChange
-import time
-
-"""
-change == 0 --> greedy selection
-change == 1 --> chi2 selection
-change == 2 --> random selection
-"""
+from stability.alter import select_k_best, AlterStrategy
+from stability.estimator import Estimator
+from os import path, getcwd, makedirs
 
 
 def main(argv):
+
+    series = ""
+    feature_size = 0
+
     try:
-        opts, args = getopt.getopt( argv, "ht:c:" ,[ "type=","change=" ] )
+        opts, args = getopt.getopt(argv, "hs:n:", ["type=", "change="])
     except getopt.GetoptError:
-        print ( "SPA.py -t <classifier type> -c <change strategy>" )
-        print ( "-h for HELP" )
+        print("SPA.py -s <GSE series number> -n <number of genes>")
+        print("-h for HELP")
         sys.exit(2)
     for opt, arg in opts:
         if opt == "-h":
-            print ( "SPA.py -t <classifier type> -c <change strategy>" )
-            print ( "The following classifiers are available:" )
-            print ( "knn, svm, nbc, nb, rf ")
-            print ( "The follwoing alteration algorithms are available:" )
-            print ( "greedy, chi2, rand, percent")
+            print("SPA.py -s <GSE series number> -n <number of genes>")
+            print("Series should be in all capitals.")
+            print("See python notebook for details on code.")
             sys.exit()
-        elif opt in ("-t", "--type"):
-            strType = arg
-        elif opt in ("-c", "--change"):
-            strChange = arg
+        elif opt in ("-s", "--series"):
+            series = arg
+        elif opt in ("-n", "--number"):
+            feature_size = arg
 
-    name = strType.lower() + "_" + strChange.lower()
-    series = [ "GSE19804", "GSE39582", "GSE27562"]
-    num_folds = 10
-    num_repeats = 10
-    size = 100
-    sub_features = np.arange( 0, 1.01, 0.05 ) # or percentage
-    type = getType( strType )
-    change = getChange ( strChange )
+    # setup directories
+    notebook_dir = getcwd()
+    main_dir = path.dirname(path.dirname(notebook_dir))
+    load_path = path.join(main_dir, "GSE", series)
+    gsa_path = path.join(main_dir, "GSA", series, str(feature_size))
+    if not path.exists(gsa_path):
+        makedirs(gsa_path)
 
-    data = [series, size, sub_features.tolist(), num_folds, num_repeats]
+    # load expressions and classes
+    y = np.loadtxt(path.join(load_path, "classes.txt"), dtype=np.str, delimiter="\t")
+    X = np.loadtxt(path.join(load_path, "expressions.txt"), delimiter="\t")
 
-    accuracy_series = []
-    for s in series:
-        file_name = ( "/cise/research64/terek/FutureConfStability/SPA/test_%s_%s.txt" % ( name, s ) )
-        fname = ( "/cise/research64/terek/FutureConfStability/SPA/data_%s_%s.npy" % ( name, s ) )
+    a = select_k_best(feature_size, X, y)
+    X = X[:, a]
 
-        if ( change == 0 ):
-            selected = greedy (s, size, type, change)
+    np.save(path.join(gsa_path, "expressions.npy"), X)
+    np.save(path.join(gsa_path, "classes.npy"), y)
 
-        elif (change == 1 or change == 2 or change == 3 ):
-            selected = chi2rand ( sub_features, s, size, type, change )
+    # calculate stability of classifiers
+    estimators = [Estimator(Estimator.KNN),
+                  Estimator(Estimator.SVM),
+                  Estimator(Estimator.RF),
+                  Estimator(Estimator.NB),
+                  Estimator(Estimator.NBC)]
 
-        writeFile ( file_name, data, fname, selected)
+    for estimator in estimators:
+        strategies = [AlterStrategy(AlterStrategy.ALL, estimator, X, y, gsa_path),
+                      AlterStrategy(AlterStrategy.SUB, estimator, X, y, gsa_path),
+                      AlterStrategy(AlterStrategy.RAND_SUB, estimator, X, y, gsa_path),
+                      AlterStrategy(AlterStrategy.GREEDY, estimator, X, y, gsa_path)]
+        for strategy in strategies:
+            result = strategy.get_accuracies()
+            print(result)
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
