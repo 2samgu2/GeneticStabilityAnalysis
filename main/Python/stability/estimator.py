@@ -23,7 +23,7 @@ class Estimator:
     SVM = 2
     RF = 3
     NB = 4
-    
+
     def __init__(self, _type, epsilon=0.8, k=1):
         """Initializes the classifier type.
 
@@ -49,7 +49,7 @@ class Estimator:
         elif self.type == Estimator.NB:
             self._classifier = GaussianNB()
             self._name = "NB"
-    
+
     @property
     def type(self):
         """Returns the type of the classifier.
@@ -57,7 +57,7 @@ class Estimator:
         :return: The type of the classifier
         """
         return self._type
-    
+
     @property
     def name(self):
         """Returns the name of the classifier.
@@ -65,7 +65,7 @@ class Estimator:
         :return: The string name of the classifier.
         """
         return self._name
-    
+
     def fit(self, X, y):
         """Fit the model using X as training data and y as target values.
 
@@ -73,7 +73,7 @@ class Estimator:
         :param y: Target values of shape = [n_samples]
         """
         self._classifier.fit(X, y)
-        
+
     def score(self, X, y):
         """Returns the mean accuracy on the given test data and labels.
 
@@ -82,7 +82,7 @@ class Estimator:
         :return: Mean accuracy of self.predict(X) wrt. y.
         """
         return self._classifier.score(X, y)
-        
+
     def predict(self, X):
         """Predict the class labels for the provided data.
 
