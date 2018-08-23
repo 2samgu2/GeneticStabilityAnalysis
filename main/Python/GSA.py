@@ -12,6 +12,7 @@ import numpy as np
 from stability.alter import select_k_best, AlterStrategy
 from stability.estimator import Estimator
 from os import path, getcwd, makedirs
+from matplotlib.pyplot import savefig, subplots
 
 
 def main(argv):
@@ -69,6 +70,38 @@ def main(argv):
         for strategy in strategies:
             result = strategy.get_accuracies()
             print(result)
+
+    # Optional: graph result
+    classifiers = ['KNN', 'SVM', 'RF', 'NB', 'NBC']
+    strategies = ['ALL', 'SUB', 'RAND_SUB', 'GREEDY']
+    names = ['All', 'Chi2 Subset', 'Random Subset', 'Greedy']
+
+    fig, axs = subplots(1, len(strategies), figsize=(16, 4), sharey=True)
+
+    i = 0
+    for strategy in strategies:
+        for classifier in classifiers:
+            data = np.load(path.join(gsa_path, "{}_{}_result.npy".format(classifier, strategy)))
+            data = list(zip(*list(data)))
+            axs[i].plot(np.arange(0, 101, 5), np.array(data[1]) * 100, label=classifier)
+            axs[i].set_xlim(0, 100)
+            axs[i].set_title(names[i])
+            axs[i].set_xlabel("Altered")
+            values = axs[i].get_xticks()
+            axs[i].set_xticklabels(['{}%'.format(int(x)) for x in values])
+        handles, labels = axs[i].get_legend_handles_labels()
+        i = i + 1
+
+    axs[0].set_ylabel("Accuracy")
+    values = axs[0].get_yticks()
+    axs[0].set_yticklabels(['{}%'.format(int(x)) for x in values])
+
+    fig.legend(handles, labels, loc=3, bbox_to_anchor=(0.35, 1.0, 0.3, 0),
+               ncol=len(classifiers), mode="expand", borderaxespad=0.)
+
+    fig.tight_layout()
+
+    savefig('results.png', bbox_inches='tight')
 
 
 if __name__ == "__main__":

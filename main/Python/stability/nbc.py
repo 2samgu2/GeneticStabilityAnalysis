@@ -31,7 +31,6 @@ class Model:
 
         # Note: the mask is the graph.
         self.mask = (np.absolute(correlations) > epsilon)
-        print(np.sum(self.mask[0]))
 
         pool = Pool(processes=cpu_count())
         self.coefficients = pool.starmap(self.solver,
@@ -39,7 +38,6 @@ class Model:
         pool.terminate()
 
         self.coefficients = np.array(self.coefficients)
-        print("NBC Model constructed.")
 
     @staticmethod
     def solver(gene, mask, X):
